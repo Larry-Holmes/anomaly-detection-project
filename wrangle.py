@@ -6,7 +6,7 @@ import env
 def pull_data():
     
     '''
-    
+    Pulls curriculum data from MySQL and returns a dataframe and saves a copy to csv
     '''
     
     if os.path.isfile('other-curriculum-access.csv'):
@@ -45,6 +45,12 @@ def pull_data():
 
 def prep():
     
+    '''
+    pulls data from MySQL server and cleans the data by removing erroneous data that we don't need to explore
+    
+    returns a clean dataframe
+    '''
+    
     #acquire data
     df = pull_data()
     
@@ -63,22 +69,31 @@ def prep():
     # renaming column
     df = df.rename(columns={'program_id': 'program', 'cohort_id': 'cohort', 'user_id': 'user'})
     
+    # concatenates the date and time columns
     df['date'] = df['date'] + ' ' + df['time']
     
+    # drops the time column now that it is within the date column
     df = df.drop(columns = ['time'])
     
+    # calls the lesson_sep function
     df = lesson_sep(df)
     
+    # converts blank unit values to table of contents
     df['unit'] = np.where(df.unit == '', 'table_of_contents', df.unit)
     
+    # fills nulls found in the lesson column
     df = df.fillna('')
     
+    # removes any row that has table of contents in the unit column
     df = df[df.unit != 'table_of_contents']
     
+    # removes any row that has staff in the name column
     df = df[df.name != 'Staff']
     
+    # removes any row that has a blank or introduction in the lesson column
     df = df[(df.lesson != '') & (df.lesson != 'introduction')]
     
+    # removes any row that has overview or search_index.json in the lesson column
     df = df[(df.lesson != 'overview') & (df.lesson != 'search_index.json')]
 
     return df
@@ -87,7 +102,9 @@ def prep():
 def convert_date(df, col):
     
     '''
+    Parameters:  df = observed dataframe, col = any amount of columns in the dataframe that need to be converted
     
+    Returns:  a dataframe with columns that align with datetime64 dtype
     '''
     
     df[col] = df[col].astype('datetime64')
@@ -97,7 +114,9 @@ def convert_date(df, col):
 def lesson_sep(df):
     
     '''
+    Parameters:  df = observed dataframe
     
+    Returns:  a dataframe where path is separated into units and lessons
     '''
     
     unit_lesson = df.path.str.split('/',1,expand=True)
@@ -130,6 +149,12 @@ def get_lower_and_upper_bounds(col, mult=1.5):
 
 def max_df(df):
     
+    '''
+     Parameters:  df = observed dataframe
+     
+     Returns: a dataframe that displays the most accessed lesson per cohort and the number of times it was accessed
+    '''
+    
     df = df[(df.lesson != '') & (df.lesson != 'introduction')]
     cohort_lessons = df.groupby('name')['lesson'].value_counts()
 
@@ -150,6 +175,12 @@ def max_df(df):
     return final
 
 def min_df(df):
+    
+    '''
+     Parameters:  df = observed dataframe
+     
+     Returns: a dataframe that displays the least accessed lesson per cohort and the number of times it was accessed
+    '''
     
     df = df[df.lesson != '']
     cohort_lessons = df.groupby('name')['lesson'].value_counts()
